@@ -72,6 +72,9 @@ func (s *StreamWrapper) RecvMsg(m interface{}) error {
 }
 
 func NewServerStreamWrapper(stream grpc.ServerStream, context context.Context, options *logger_grpc.Options, l logger.LoggerInterface, loggerContext *logger.Context) *StreamWrapper {
+	if l == nil {
+		l = logger.NewNopLogger()
+	}
 	return &StreamWrapper{
 		ServerStream:  stream,
 		context:       context,
