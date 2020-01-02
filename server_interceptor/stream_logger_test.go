@@ -1,6 +1,8 @@
 package server_interceptor_test
 
 import (
+	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -251,4 +253,92 @@ func TestStreamInterceptor_WithLevels(t *testing.T) {
 	assert.Equal(t, "OK", entry5Ctx["grpc_code"].Value)
 	assert.Equal(t, logger.EmergencyLevel, entry5.Level)
 	assert.Regexp(t, `grpc server stream call /mwitkow\.testproto\.TestService/PingStream \[code:OK, duration:.*\]`, entry5.Message)
+}
+
+func TestStreamInterceptor_WillPanic(t *testing.T) {
+	myLogger := &testing_logger.Logger{}
+
+	interceptor := server_interceptor.StreamInterceptor(myLogger)
+	ctx, _ := context.WithTimeout(context.TODO(), 2*time.Second)
+	handlerMock := func(srv interface{}, stream grpc.ServerStream) error {
+		assert.Equal(t, ctx, stream.Context())
+		panic("my_fake_panic_message")
+	}
+	assert.PanicsWithValue(t,
+		"my_fake_panic_message",
+		func() { _ = interceptor(nil, &StreamMock{context: ctx}, &grpc.StreamServerInfo{FullMethod: "/mwitkow.testproto.TestService/PingStream"}, handlerMock) },
+	)
+
+	entries := myLogger.GetEntries()
+	assert.Len(t, entries, 2)
+
+	for _, e := range entries {
+		eCtx := *e.Context
+		assert.NotContains(t, eCtx, "grpc_code")
+
+		assert.Contains(t, eCtx, "grpc_start_time")
+		assert.Contains(t, eCtx, "grpc_duration")
+		assert.Contains(t, eCtx, "grpc_request_deadline")
+		assert.Equal(t, "server", eCtx["grpc_kind"].Value)
+		assert.Equal(t, "PingStream", eCtx["grpc_method"].Value)
+		assert.Equal(t, "mwitkow.testproto.TestService", eCtx["grpc_service"].Value)
+	}
+
+	entry1 := entries[0]
+	entry1Ctx := *entry1.Context
+	assert.NotContains(t, entry1Ctx, "grpc_send_data")
+	assert.NotContains(t, entry1Ctx, "grpc_recv_data")
+	assert.Equal(t, logger.DebugLevel, entry1.Level)
+	assert.Equal(t, "grpc server begin stream call /mwitkow.testproto.TestService/PingStream", entry1.Message)
+
+	entry2 := entries[1]
+	entry2Ctx := *entry2.Context
+	assert.NotContains(t, entry2Ctx, "grpc_send_data")
+	assert.NotContains(t, entry2Ctx, "grpc_recv_data")
+	assert.Equal(t, "my_fake_panic_message", entry2Ctx["grpc_panic"].Value)
+	assert.Equal(t, logger.CriticalLevel, entry2.Level)
+	assert.Regexp(t, `grpc server stream panic /mwitkow\.testproto\.TestService/PingStream \[duration:.*]`, entry2.Message)
+}
+
+func TestStreamInterceptor_WithError(t *testing.T) {
+	myLogger := &testing_logger.Logger{}
+
+	interceptor := server_interceptor.StreamInterceptor(myLogger)
+	ctx, _ := context.WithTimeout(context.TODO(), 2*time.Second)
+	handlerMock := func(srv interface{}, stream grpc.ServerStream) error {
+		assert.Equal(t, ctx, stream.Context())
+		return errors.New("my_fake_error_message")
+	}
+
+	err := interceptor(nil, &StreamMock{context: ctx}, &grpc.StreamServerInfo{FullMethod: "/mwitkow.testproto.TestService/PingStream"}, handlerMock)
+	assert.EqualError(t, err, "my_fake_error_message")
+
+	entries := myLogger.GetEntries()
+	assert.Len(t, entries, 2)
+
+	for _, e := range entries {
+		eCtx := *e.Context
+		assert.Contains(t, eCtx, "grpc_start_time")
+		assert.Contains(t, eCtx, "grpc_duration")
+		assert.Contains(t, eCtx, "grpc_request_deadline")
+		assert.Equal(t, "server", eCtx["grpc_kind"].Value)
+		assert.Equal(t, "Unknown", eCtx["grpc_code"].Value)
+		assert.Equal(t, "PingStream", eCtx["grpc_method"].Value)
+		assert.Equal(t, "mwitkow.testproto.TestService", eCtx["grpc_service"].Value)
+	}
+
+	entry1 := entries[0]
+	entry1Ctx := *entry1.Context
+	assert.NotContains(t, entry1Ctx, "grpc_send_data")
+	assert.NotContains(t, entry1Ctx, "grpc_recv_data")
+	assert.Equal(t, logger.DebugLevel, entry1.Level)
+	assert.Equal(t, "grpc server begin stream call /mwitkow.testproto.TestService/PingStream", entry1.Message)
+
+	entry2 := entries[1]
+	entry2Ctx := *entry2.Context
+	assert.NotContains(t, entry2Ctx, "grpc_send_data")
+	assert.NotContains(t, entry2Ctx, "grpc_recv_data")
+	assert.EqualError(t,  entry2Ctx["grpc_error"].Value.(error), "my_fake_error_message")
+	assert.Equal(t, logger.ErrorLevel, entry2.Level)
+	assert.Regexp(t, `grpc server stream call /mwitkow\.testproto\.TestService/PingStream \[code:Unknown, duration:.*]`, entry2.Message)
 }
