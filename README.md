@@ -1,7 +1,9 @@
 # logger-grpc
 
 [![Build Status](https://travis-ci.org/gol4ng/logger-grpc.svg?branch=master)](https://travis-ci.org/gol4ng/logger-grpc)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gol4ng/logger-grpc)](https://goreportcard.com/report/github.com/gol4ng/logger-grpc)
+[![Maintainability](https://api.codeclimate.com/v1/badges/5dfa47faa129518b9b9d/maintainability)](https://codeclimate.com/github/gol4ng/logger-grpc/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/5dfa47faa129518b9b9d/test_coverage)](https://codeclimate.com/github/gol4ng/logger-grpc/test_coverage)
+[![Go Report Card](https://goreportcard.com/badge/github.com/gol4ng/logger-grpc?)](https://goreportcard.com/report/github.com/gol4ng/logger-grpc?)
 [![GoDoc](https://godoc.org/github.com/gol4ng/logger-grpc?status.svg)](https://godoc.org/github.com/gol4ng/logger-grpc)
 
 Gol4ng logger sub package for logging grpc
