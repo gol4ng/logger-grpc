@@ -17,11 +17,11 @@ type StreamWrapper struct {
 	options       *logger_grpc.Options
 	context       context.Context
 	logger        logger.LoggerInterface
-	loggerContext *logger.Context
+	loggerContext logger.Context
 }
 
 func (s *StreamWrapper) getLoggerContext() *logger.Context {
-	return (&logger.Context{}).Merge(*s.loggerContext)
+	return (&logger.Context{}).Merge(s.loggerContext)
 }
 
 func (s *StreamWrapper) SendHeader(md metadata.MD) error {
@@ -71,7 +71,7 @@ func (s *StreamWrapper) RecvMsg(m interface{}) error {
 	return err
 }
 
-func NewServerStreamWrapper(stream grpc.ServerStream, context context.Context, options *logger_grpc.Options, l logger.LoggerInterface, loggerContext *logger.Context) *StreamWrapper {
+func NewServerStreamWrapper(stream grpc.ServerStream, context context.Context, options *logger_grpc.Options, l logger.LoggerInterface, loggerContext logger.Context) *StreamWrapper {
 	if l == nil {
 		l = logger.NewNopLogger()
 	}

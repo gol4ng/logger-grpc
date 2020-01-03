@@ -42,6 +42,6 @@ func StreamInterceptor(log logger.LoggerInterface, opts ...logger_grpc.Option) g
 			_ = currentLogger.Log(fmt.Sprintf("grpc server stream call %s [code:%s, duration:%s]", info.FullMethod, codeStr, duration), o.LevelFunc(code), currentLoggerContext)
 		}()
 		_ = currentLogger.Debug("grpc server begin stream call "+info.FullMethod, currentLoggerContext)
-		return handler(srv, NewServerStreamWrapper(stream, ctx, o, currentLogger, currentLoggerContext))
+		return handler(srv, NewServerStreamWrapper(stream, ctx, o, currentLogger, *currentLoggerContext))
 	}
 }
