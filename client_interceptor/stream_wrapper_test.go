@@ -15,7 +15,7 @@ import (
 
 func TestStreamWrapper_SendMsg(t *testing.T) {
 	mMock := "my_fake_message"
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 	clientStreamMock := &mocks.ClientStream{}
 	clientStreamMock.On("SendMsg", mMock).Return(nil)
 
@@ -23,7 +23,7 @@ func TestStreamWrapper_SendMsg(t *testing.T) {
 	err := clientStreamWrapper.SendMsg(mMock)
 	assert.NoError(t, err)
 
-	entries := myLogger.GetEntries()
+	entries := store.GetEntries()
 	assert.Len(t, entries, 1)
 
 	entry1 := entries[0]
@@ -37,7 +37,7 @@ func TestStreamWrapper_SendMsg(t *testing.T) {
 func TestStreamWrapper_SendMsg_WithError(t *testing.T) {
 	mMock := "my_fake_message"
 	errorMock := errors.New("my_fake_error")
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 	clientStreamMock := &mocks.ClientStream{}
 	clientStreamMock.On("SendMsg", mMock).Return(errorMock)
 
@@ -45,7 +45,7 @@ func TestStreamWrapper_SendMsg_WithError(t *testing.T) {
 	err := clientStreamWrapper.SendMsg(mMock)
 	assert.EqualError(t, err, "my_fake_error")
 
-	entries := myLogger.GetEntries()
+	entries := store.GetEntries()
 	assert.Len(t, entries, 1)
 
 	entry1 := entries[0]
@@ -60,7 +60,7 @@ func TestStreamWrapper_SendMsg_WithError(t *testing.T) {
 
 func TestStreamWrapper_RecvMsg(t *testing.T) {
 	mMock := "my_fake_message"
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 	clientStreamMock := &mocks.ClientStream{}
 	clientStreamMock.On("RecvMsg", mMock).Return(nil)
 
@@ -68,7 +68,7 @@ func TestStreamWrapper_RecvMsg(t *testing.T) {
 	err := clientStreamWrapper.RecvMsg(mMock)
 	assert.NoError(t, err)
 
-	entries := myLogger.GetEntries()
+	entries := store.GetEntries()
 	assert.Len(t, entries, 1)
 
 	entry1 := entries[0]
@@ -81,7 +81,7 @@ func TestStreamWrapper_RecvMsg(t *testing.T) {
 
 func TestStreamWrapper_RecvMsg_WithEOF(t *testing.T) {
 	mMock := "my_fake_message"
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 	clientStreamMock := &mocks.ClientStream{}
 	clientStreamMock.On("RecvMsg", mMock).Return(io.EOF)
 
@@ -89,7 +89,7 @@ func TestStreamWrapper_RecvMsg_WithEOF(t *testing.T) {
 	err := clientStreamWrapper.RecvMsg(mMock)
 	assert.Equal(t, io.EOF, err)
 
-	entries := myLogger.GetEntries()
+	entries := store.GetEntries()
 	assert.Len(t, entries, 1)
 
 	entry1 := entries[0]
@@ -102,7 +102,7 @@ func TestStreamWrapper_RecvMsg_WithEOF(t *testing.T) {
 func TestStreamWrapper_RecvMsg_WithError(t *testing.T) {
 	mMock := "my_fake_message"
 	errorMock := errors.New("my_fake_error")
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 	clientStreamMock := &mocks.ClientStream{}
 	clientStreamMock.On("RecvMsg", mMock).Return(errorMock)
 
@@ -110,7 +110,7 @@ func TestStreamWrapper_RecvMsg_WithError(t *testing.T) {
 	err := clientStreamWrapper.RecvMsg(mMock)
 	assert.EqualError(t, err, "my_fake_error")
 
-	entries := myLogger.GetEntries()
+	entries := store.GetEntries()
 	assert.Len(t, entries, 1)
 
 	entry1 := entries[0]

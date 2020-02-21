@@ -24,9 +24,9 @@ func TestUnaryInjectLoggerInterceptor_NilLogger(t *testing.T) {
 }
 
 func TestUnaryInjectLoggerInterceptor(t *testing.T) {
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 	interceptor := server_interceptor.UnaryInjectLoggerInterceptor(myLogger)
-	ctx := context.Background()
+	ctx := context.TODO()
 	handlerMock := func(innerCtx context.Context, req interface{}) (interface{}, error) {
 		assert.NotEqual(t, ctx, innerCtx)
 		return nil, nil
@@ -34,5 +34,5 @@ func TestUnaryInjectLoggerInterceptor(t *testing.T) {
 	resp, err := interceptor(ctx, nil, &grpc.UnaryServerInfo{}, handlerMock)
 	assert.NoError(t, err)
 	assert.Nil(t, resp)
-	assert.Empty(t, myLogger.GetEntries())
+	assert.Empty(t, store.GetEntries())
 }

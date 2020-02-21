@@ -26,7 +26,7 @@ func UnaryInterceptor(log logger.LoggerInterface, opts ...logger_grpc.Option) gr
 
 			if err := recover(); err != nil {
 				currentLoggerContext.Add("grpc_panic", err)
-				_ = currentLogger.Critical(fmt.Sprintf("grpc client unary panic %s [duration:%s]", method, duration), currentLoggerContext)
+				currentLogger.Critical(fmt.Sprintf("grpc client unary panic %s [duration:%s]", method, duration), *currentLoggerContext.Slice()...)
 				panic(err)
 			}
 
@@ -39,7 +39,7 @@ func UnaryInterceptor(log logger.LoggerInterface, opts ...logger_grpc.Option) gr
 					Add("grpc_error_message", err.Error())
 			}
 
-			_ = currentLogger.Log(fmt.Sprintf("grpc client unary call %s [code:%s, duration:%s]", method, codeStr, duration), o.LevelFunc(code), currentLoggerContext)
+			currentLogger.Log(fmt.Sprintf("grpc client unary call %s [code:%s, duration:%s]", method, codeStr, duration), o.LevelFunc(code), *currentLoggerContext.Slice()...)
 		}()
 
 		return invoker(ctx, method, req, reply, cc, opts...)

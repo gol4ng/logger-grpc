@@ -26,13 +26,13 @@ func (s *StreamWrapper) getLoggerContext() *logger.Context {
 
 func (s *StreamWrapper) SendHeader(md metadata.MD) error {
 	err := s.ServerStream.SendHeader(md)
-	ctx := s.getLoggerContext().Add("grpc_metadata", md)
+	lContext := s.getLoggerContext().Add("grpc_metadata", md)
 	if err != nil {
 		code := s.options.CodeFunc(err)
-		_ = s.logger.Log("grpc server stream send header error", s.options.LevelFunc(code), ctx.Add("grpc_error", err).Add("grpc_code", code.String()))
+		s.logger.Log("grpc server stream send header error", s.options.LevelFunc(code), *lContext.Add("grpc_error", err).Add("grpc_code", code.String()).Slice()...)
 		return err
 	}
-	_ = s.logger.Debug("grpc server stream send header", ctx)
+	s.logger.Debug("grpc server stream send header", *lContext.Slice()...)
 	return err
 }
 
@@ -43,31 +43,31 @@ func (s *StreamWrapper) Context() context.Context {
 func (s *StreamWrapper) SendMsg(m interface{}) error {
 	startTime := time.Now()
 	err := s.ServerStream.SendMsg(m)
-	ctx := s.getLoggerContext().Add("grpc_send_data", m).Add("grpc_duration", time.Since(startTime).Seconds())
+	lContext := s.getLoggerContext().Add("grpc_send_data", m).Add("grpc_duration", time.Since(startTime).Seconds())
 	if err != nil {
 		code := s.options.CodeFunc(err)
-		_ = s.logger.Log("grpc server stream send error", s.options.LevelFunc(code), ctx.Add("grpc_error", err).Add("grpc_code", code.String()))
+		s.logger.Log("grpc server stream send error", s.options.LevelFunc(code), *lContext.Add("grpc_error", err).Add("grpc_code", code.String()).Slice()...)
 		return err
 	}
-	_ = s.logger.Debug("grpc server stream send message", ctx)
+	s.logger.Debug("grpc server stream send message", *lContext.Slice()...)
 	return err
 }
 
 func (s *StreamWrapper) RecvMsg(m interface{}) error {
 	startTime := time.Now()
 	err := s.ServerStream.RecvMsg(m)
-	ctx := s.getLoggerContext().Add("grpc_duration", time.Since(startTime).Seconds())
+	lContext := s.getLoggerContext().Add("grpc_duration", time.Since(startTime).Seconds())
 	if err == io.EOF {
-		_ = s.logger.Debug("grpc server stream receive EOF", ctx)
+		s.logger.Debug("grpc server stream receive EOF", *lContext.Slice()...)
 		return err
 	}
-	ctx.Add("grpc_recv_data", m)
+	lContext.Add("grpc_recv_data", m)
 	if err != nil {
 		code := s.options.CodeFunc(err)
-		_ = s.logger.Log("grpc server stream receive error", s.options.LevelFunc(code), ctx.Add("grpc_error", err).Add("grpc_code", code.String()))
+		s.logger.Log("grpc server stream receive error", s.options.LevelFunc(code), *lContext.Add("grpc_error", err).Add("grpc_code", code.String()).Slice()...)
 		return err
 	}
-	_ = s.logger.Debug("grpc server stream receive message", ctx)
+	s.logger.Debug("grpc server stream receive message", *lContext.Slice()...)
 	return err
 }
 

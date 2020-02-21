@@ -13,7 +13,7 @@ import (
 
 func TestUnaryInjectLoggerInterceptor_NilLogger(t *testing.T) {
 	interceptor := client_interceptor.UnaryInjectLoggerInterceptor(nil)
-	ctx := context.Background()
+	ctx := context.TODO()
 	unaryInvokerMock := func(innerCtx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) (err error) {
 		assert.Equal(t, ctx, innerCtx)
 		return nil
@@ -23,14 +23,14 @@ func TestUnaryInjectLoggerInterceptor_NilLogger(t *testing.T) {
 }
 
 func TestUnaryInjectLoggerInterceptor(t *testing.T) {
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 	interceptor := client_interceptor.UnaryInjectLoggerInterceptor(myLogger)
-	ctx := context.Background()
+	ctx := context.TODO()
 	unaryInvokerMock := func(innerCtx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) (err error) {
 		assert.NotEqual(t, ctx, innerCtx)
 		return nil
 	}
 	err := interceptor(ctx, "my_fake_method", nil, nil, &grpc.ClientConn{}, unaryInvokerMock)
 	assert.NoError(t, err)
-	assert.Empty(t, myLogger.GetEntries())
+	assert.Empty(t, store.GetEntries())
 }

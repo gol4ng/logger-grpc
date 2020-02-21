@@ -19,109 +19,84 @@ import (
 )
 
 func TestUnaryInterceptor(t *testing.T) {
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 
-	its := &grpc_testing.InterceptorTestSuite{}
-	its.Suite.SetT(t)
-	its.SetupSuite()
+	its := getUnaryInterceptorTestSuite(t, myLogger)
+	defer its.TearDownSuite()
 
-	c := its.NewClient(
-		grpc.WithUnaryInterceptor(client_interceptor.UnaryInterceptor(myLogger)),
-	)
-	resp, err := c.Ping(its.SimpleCtx(), &pb_testproto.PingRequest{Value: "my_fake_ping_payload"})
+	resp, err := its.Client.Ping(its.SimpleCtx(), &pb_testproto.PingRequest{Value: "my_fake_ping_payload"})
 
-	assert.NoError(t, err)
-	assert.Equal(t, "my_fake_ping_payload", resp.Value)
-	assert.Equal(t, int32(42), resp.Counter)
+	its.NoError(err)
+	its.Equal("my_fake_ping_payload", resp.Value)
+	its.Equal(int32(42), resp.Counter)
 
-	entries := myLogger.GetEntries()
-	assert.Len(t, entries, 1)
+	entries := store.GetEntries()
+	its.Len(entries, 1)
+
+	AssertUnaryDefaultEntries(t, entries)
 
 	entry := entries[0]
-	assert.Equal(t, logger.InfoLevel, entry.Level)
-	assert.Regexp(t, `grpc client unary call /mwitkow\.testproto\.TestService/Ping \[code:OK, duration:.*\]`, entry.Message)
+	its.Equal(logger.InfoLevel, entry.Level)
+	its.Regexp(`grpc client unary call /mwitkow\.testproto\.TestService/Ping \[code:OK, duration:.*\]`, entry.Message)
 
-	assert.Equal(t, "client", (*entry.Context)["grpc_kind"].Value)
-	assert.Equal(t, "OK", (*entry.Context)["grpc_code"].Value)
-	assert.Equal(t, "mwitkow.testproto.TestService", (*entry.Context)["grpc_service"].Value)
-	assert.Equal(t, "Ping", (*entry.Context)["grpc_method"].Value)
-	assert.Contains(t, *entry.Context, "grpc_start_time")
-	assert.Contains(t, *entry.Context, "grpc_request_deadline")
-	assert.Contains(t, *entry.Context, "grpc_duration")
+	its.Equal("OK", (*entry.Context)["grpc_code"].Value)
 }
 
 func TestUnaryInterceptor_WithContext(t *testing.T) {
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 
-	its := &grpc_testing.InterceptorTestSuite{}
-	its.Suite.SetT(t)
-	its.SetupSuite()
+	its := getUnaryInterceptorTestSuite(t, myLogger, logger_grpc.WithLoggerContext(func(fullMethodName string) *logger.Context {
+		return logger.NewContext().Add("base_context_key", "base_context_value")
+	}))
+	defer its.TearDownSuite()
 
-	c := its.NewClient(
-		grpc.WithUnaryInterceptor(client_interceptor.UnaryInterceptor(myLogger, logger_grpc.WithLoggerContext(func(fullMethodName string) *logger.Context {
-			return logger.NewContext().Add("base_context_key", "base_context_value")
-		}))),
-	)
+	resp, err := its.Client.Ping(its.SimpleCtx(), &pb_testproto.PingRequest{Value: "my_fake_ping_payload"})
 
-	resp, err := c.Ping(its.SimpleCtx(), &pb_testproto.PingRequest{Value: "my_fake_ping_payload"})
+	its.NoError(err)
+	its.Equal("my_fake_ping_payload", resp.Value)
+	its.Equal(int32(42), resp.Counter)
 
-	assert.NoError(t, err)
-	assert.Equal(t, "my_fake_ping_payload", resp.Value)
-	assert.Equal(t, int32(42), resp.Counter)
+	entries := store.GetEntries()
+	its.Len(entries, 1)
 
-	entries := myLogger.GetEntries()
-	assert.Len(t, entries, 1)
+	AssertUnaryDefaultEntries(t, entries)
 
 	entry := entries[0]
-	assert.Equal(t, (*entry.Context)["base_context_key"].Value, "base_context_value")
-	assert.Equal(t, logger.InfoLevel, entry.Level)
-	assert.Regexp(t, `grpc client unary call /mwitkow\.testproto\.TestService/Ping \[code:OK, duration:.*\]`, entry.Message)
+	its.Equal((*entry.Context)["base_context_key"].Value, "base_context_value")
+	its.Equal(logger.InfoLevel, entry.Level)
+	its.Regexp(`grpc client unary call /mwitkow\.testproto\.TestService/Ping \[code:OK, duration:.*\]`, entry.Message)
 
-	assert.Equal(t, (*entry.Context)["grpc_kind"].Value, "client")
-	assert.Equal(t, (*entry.Context)["grpc_code"].Value, "OK")
-	assert.Equal(t, (*entry.Context)["grpc_service"].Value, "mwitkow.testproto.TestService")
-	assert.Equal(t, (*entry.Context)["grpc_method"].Value, "Ping")
-	assert.Contains(t, *entry.Context, "grpc_start_time")
-	assert.Contains(t, *entry.Context, "grpc_request_deadline")
-	assert.Contains(t, *entry.Context, "grpc_duration")
+	its.Equal("OK", (*entry.Context)["grpc_code"].Value)
 }
 
 func TestUnaryInterceptor_WithLevels(t *testing.T) {
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 
-	its := &grpc_testing.InterceptorTestSuite{}
-	its.Suite.SetT(t)
-	its.SetupSuite()
+	its := getUnaryInterceptorTestSuite(t, myLogger, logger_grpc.WithLevels(func(code codes.Code) logger.Level {
+		return logger.EmergencyLevel
+	}))
+	defer its.TearDownSuite()
 
-	c := its.NewClient(
-		grpc.WithUnaryInterceptor(client_interceptor.UnaryInterceptor(myLogger, logger_grpc.WithLevels(func(code codes.Code) logger.Level {
-			return logger.EmergencyLevel
-		}))),
-	)
-	resp, err := c.Ping(its.SimpleCtx(), &pb_testproto.PingRequest{Value: "my_fake_ping_payload"})
+	resp, err := its.Client.Ping(its.SimpleCtx(), &pb_testproto.PingRequest{Value: "my_fake_ping_payload"})
 
-	assert.NoError(t, err)
-	assert.Equal(t, "my_fake_ping_payload", resp.Value)
-	assert.Equal(t, int32(42), resp.Counter)
+	its.NoError(err)
+	its.Equal("my_fake_ping_payload", resp.Value)
+	its.Equal(int32(42), resp.Counter)
 
-	entries := myLogger.GetEntries()
-	assert.Len(t, entries, 1)
+	entries := store.GetEntries()
+	its.Len(entries, 1)
+
+	AssertUnaryDefaultEntries(t, entries)
 
 	entry := entries[0]
-	assert.Equal(t, logger.EmergencyLevel, entry.Level)
-	assert.Regexp(t, `grpc client unary call /mwitkow\.testproto\.TestService/Ping \[code:OK, duration:.*\]`, entry.Message)
-
-	assert.Equal(t, (*entry.Context)["grpc_kind"].Value, "client")
-	assert.Equal(t, (*entry.Context)["grpc_code"].Value, "OK")
-	assert.Equal(t, (*entry.Context)["grpc_service"].Value, "mwitkow.testproto.TestService")
-	assert.Equal(t, (*entry.Context)["grpc_method"].Value, "Ping")
-	assert.Contains(t, *entry.Context, "grpc_start_time")
-	assert.Contains(t, *entry.Context, "grpc_request_deadline")
-	assert.Contains(t, *entry.Context, "grpc_duration")
+	its.Equal(logger.EmergencyLevel, entry.Level)
+	its.Equal((*entry.Context)["grpc_code"].Value, "OK")
+	its.Contains(*entry.Context, "grpc_duration")
+	its.Regexp(`grpc client unary call /mwitkow\.testproto\.TestService/Ping \[code:OK, duration:.*\]`, entry.Message)
 }
 
 func TestUnaryInterceptor_WillPanic(t *testing.T) {
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 	interceptor := client_interceptor.UnaryInterceptor(myLogger)
 	ctx, _ := context.WithTimeout(context.TODO(), 2*time.Second)
 	unaryInvokerMock := func(innerCtx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) (err error) {
@@ -133,19 +108,14 @@ func TestUnaryInterceptor_WillPanic(t *testing.T) {
 		func() { _ = interceptor(ctx, "/mwitkow.testproto.TestService/Ping", nil, nil, &grpc.ClientConn{}, unaryInvokerMock) },
 	)
 
-	entries := myLogger.GetEntries()
+	entries := store.GetEntries()
 	assert.Len(t, entries, 1)
+
+	AssertUnaryDefaultEntries(t, entries)
 
 	for _, e := range entries {
 		eCtx := *e.Context
 		assert.NotContains(t, eCtx, "grpc_code")
-
-		assert.Contains(t, eCtx, "grpc_start_time")
-		assert.Contains(t, eCtx, "grpc_duration")
-		assert.Contains(t, eCtx, "grpc_request_deadline")
-		assert.Equal(t, "client", eCtx["grpc_kind"].Value)
-		assert.Equal(t, "Ping", eCtx["grpc_method"].Value)
-		assert.Equal(t, "mwitkow.testproto.TestService", eCtx["grpc_service"].Value)
 	}
 
 	entry1 := entries[0]
@@ -157,7 +127,7 @@ func TestUnaryInterceptor_WillPanic(t *testing.T) {
 }
 
 func TestUnaryInterceptor_WithError(t *testing.T) {
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 	interceptor := client_interceptor.UnaryInterceptor(myLogger)
 	ctx, _ := context.WithTimeout(context.TODO(), 2*time.Second)
 	unaryInvokerMock := func(innerCtx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, opts ...grpc.CallOption) (err error) {
@@ -167,24 +137,39 @@ func TestUnaryInterceptor_WithError(t *testing.T) {
 	err := interceptor(ctx, "/mwitkow.testproto.TestService/Ping", nil, nil, &grpc.ClientConn{}, unaryInvokerMock)
 	assert.EqualError(t, err, "my_fake_panic_message")
 
-	entries := myLogger.GetEntries()
+	entries := store.GetEntries()
 	assert.Len(t, entries, 1)
 
+	AssertUnaryDefaultEntries(t, entries)
+
+	entry1 := entries[0]
+	entry1Ctx := *entry1.Context
+	assert.Equal(t, "Unknown", entry1Ctx["grpc_code"].Value)
+	assert.NotContains(t, entry1Ctx, "grpc_send_data")
+	assert.NotContains(t, entry1Ctx, "grpc_recv_data")
+	assert.Equal(t, logger.ErrorLevel, entry1.Level)
+	assert.Regexp(t, `grpc client unary call /mwitkow\.testproto\.TestService/Ping \[code:Unknown, duration:.*\]`, entry1.Message)
+}
+
+func getUnaryInterceptorTestSuite(t *testing.T, logger logger.LoggerInterface, opts ...logger_grpc.Option) *grpc_testing.InterceptorTestSuite {
+	its := &grpc_testing.InterceptorTestSuite{
+		ClientOpts: []grpc.DialOption{
+			grpc.WithUnaryInterceptor(client_interceptor.UnaryInterceptor(logger, opts...)),
+		},
+	}
+	its.Suite.SetT(t)
+	its.SetupSuite()
+	return its
+}
+
+func AssertUnaryDefaultEntries(t *testing.T, entries []logger.Entry) {
 	for _, e := range entries {
 		eCtx := *e.Context
 		assert.Contains(t, eCtx, "grpc_start_time")
 		assert.Contains(t, eCtx, "grpc_duration")
 		assert.Contains(t, eCtx, "grpc_request_deadline")
-		assert.Equal(t, "Unknown", eCtx["grpc_code"].Value)
 		assert.Equal(t, "client", eCtx["grpc_kind"].Value)
 		assert.Equal(t, "Ping", eCtx["grpc_method"].Value)
 		assert.Equal(t, "mwitkow.testproto.TestService", eCtx["grpc_service"].Value)
 	}
-
-	entry1 := entries[0]
-	entry1Ctx := *entry1.Context
-	assert.NotContains(t, entry1Ctx, "grpc_send_data")
-	assert.NotContains(t, entry1Ctx, "grpc_recv_data")
-	assert.Equal(t, logger.ErrorLevel, entry1.Level)
-	assert.Regexp(t, `grpc client unary call /mwitkow\.testproto\.TestService/Ping \[code:Unknown, duration:.*\]`, entry1.Message)
 }

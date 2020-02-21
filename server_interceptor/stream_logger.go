@@ -26,7 +26,7 @@ func StreamInterceptor(log logger.LoggerInterface, opts ...logger_grpc.Option) g
 
 			if err := recover(); err != nil {
 				currentLoggerContext.Add("grpc_panic", err)
-				_ = currentLogger.Critical(fmt.Sprintf("grpc server stream panic %s [duration:%s]", info.FullMethod, duration), currentLoggerContext)
+				currentLogger.Critical(fmt.Sprintf("grpc server stream panic %s [duration:%s]", info.FullMethod, duration), *currentLoggerContext.Slice()...)
 				panic(err)
 			}
 
@@ -39,9 +39,9 @@ func StreamInterceptor(log logger.LoggerInterface, opts ...logger_grpc.Option) g
 					Add("grpc_error_message", err.Error())
 			}
 
-			_ = currentLogger.Log(fmt.Sprintf("grpc server stream call %s [code:%s, duration:%s]", info.FullMethod, codeStr, duration), o.LevelFunc(code), currentLoggerContext)
+			currentLogger.Log(fmt.Sprintf("grpc server stream call %s [code:%s, duration:%s]", info.FullMethod, codeStr, duration), o.LevelFunc(code), *currentLoggerContext.Slice()...)
 		}()
-		_ = currentLogger.Debug("grpc server begin stream call "+info.FullMethod, currentLoggerContext)
+		currentLogger.Debug("grpc server begin stream call "+info.FullMethod, *currentLoggerContext.Slice()...)
 		return handler(srv, NewServerStreamWrapper(stream, ctx, o, currentLogger, *currentLoggerContext))
 	}
 }

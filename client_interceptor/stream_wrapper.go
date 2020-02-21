@@ -21,34 +21,34 @@ func (s *StreamWrapper) getLoggerContext() *logger.Context {
 	return (&logger.Context{}).Merge(s.loggerContext)
 }
 
-func (c *StreamWrapper) SendMsg(m interface{}) error {
+func (s *StreamWrapper) SendMsg(m interface{}) error {
 	startTime := time.Now()
-	err := c.ClientStream.SendMsg(m)
-	ctx := c.getLoggerContext().Add("grpc_send_data", m).Add("grpc_duration", time.Since(startTime).Seconds())
+	err := s.ClientStream.SendMsg(m)
+	lContext := s.getLoggerContext().Add("grpc_send_data", m).Add("grpc_duration", time.Since(startTime).Seconds())
 	if err != nil {
-		code := c.options.CodeFunc(err)
-		_ = c.logger.Log("grpc client stream send error", c.options.LevelFunc(code), ctx.Add("grpc_error", err).Add("grpc_code", code.String()))
+		code := s.options.CodeFunc(err)
+		s.logger.Log("grpc client stream send error", s.options.LevelFunc(code), *lContext.Add("grpc_error", err).Add("grpc_code", code.String()).Slice()...)
 		return err
 	}
-	_ = c.logger.Debug("grpc client stream send message", ctx)
+	s.logger.Debug("grpc client stream send message", *lContext.Slice()...)
 	return err
 }
 
-func (c *StreamWrapper) RecvMsg(m interface{}) error {
+func (s *StreamWrapper) RecvMsg(m interface{}) error {
 	startTime := time.Now()
-	err := c.ClientStream.RecvMsg(m)
-	ctx := c.getLoggerContext().Add("grpc_duration", time.Since(startTime).Seconds())
+	err := s.ClientStream.RecvMsg(m)
+	lContext := s.getLoggerContext().Add("grpc_duration", time.Since(startTime).Seconds())
 	if err == io.EOF {
-		_ = c.logger.Debug("grpc client stream receive EOF", ctx)
+		s.logger.Debug("grpc client stream receive EOF", *lContext.Slice()...)
 		return err
 	}
-	ctx.Add("grpc_recv_data", m)
+	lContext.Add("grpc_recv_data", m)
 	if err != nil {
-		code := c.options.CodeFunc(err)
-		_ = c.logger.Log("grpc client stream receive error", c.options.LevelFunc(code), ctx.Add("grpc_error", err).Add("grpc_code", code.String()))
+		code := s.options.CodeFunc(err)
+		s.logger.Log("grpc client stream receive error", s.options.LevelFunc(code), *lContext.Add("grpc_error", err).Add("grpc_code", code.String()).Slice()...)
 		return err
 	}
-	_ = c.logger.Debug("grpc client stream receive message", ctx)
+	s.logger.Debug("grpc client stream receive message", *lContext.Slice()...)
 	return err
 }
 

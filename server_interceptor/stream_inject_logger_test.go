@@ -22,7 +22,7 @@ func (s *StreamMock) Context() context.Context {
 
 func TestStreamInjectLoggerInterceptor_NilLogger(t *testing.T) {
 	interceptor := server_interceptor.StreamInjectLoggerInterceptor(nil)
-	ctx := context.Background()
+	ctx := context.TODO()
 	handlerMock := func(srv interface{}, stream grpc.ServerStream) error {
 		assert.Equal(t, ctx, stream.Context())
 		return nil
@@ -32,14 +32,14 @@ func TestStreamInjectLoggerInterceptor_NilLogger(t *testing.T) {
 }
 
 func TestStreamInjectLoggerInterceptor(t *testing.T) {
-	myLogger := &testing_logger.Logger{}
+	myLogger, store := testing_logger.NewLogger()
 	interceptor := server_interceptor.StreamInjectLoggerInterceptor(myLogger)
-	ctx := context.Background()
+	ctx := context.TODO()
 	handlerMock := func(srv interface{}, stream grpc.ServerStream) error {
 		assert.NotEqual(t, ctx, stream.Context())
 		return nil
 	}
 	err := interceptor(nil, &StreamMock{context: ctx}, &grpc.StreamServerInfo{}, handlerMock)
 	assert.NoError(t, err)
-	assert.Empty(t, myLogger.GetEntries())
+	assert.Empty(t, store.GetEntries())
 }

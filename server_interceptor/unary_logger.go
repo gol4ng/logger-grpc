@@ -25,7 +25,7 @@ func UnaryInterceptor(log logger.LoggerInterface, opts ...logger_grpc.Option) gr
 
 			if err := recover(); err != nil {
 				currentLoggerContext.Add("grpc_panic", err)
-				_ = currentLogger.Critical(fmt.Sprintf("grpc server unary panic %s [duration:%s]", info.FullMethod, duration), currentLoggerContext)
+				currentLogger.Critical(fmt.Sprintf("grpc server unary panic %s [duration:%s]", info.FullMethod, duration), *currentLoggerContext.Slice()...)
 				panic(err)
 			}
 
@@ -38,7 +38,7 @@ func UnaryInterceptor(log logger.LoggerInterface, opts ...logger_grpc.Option) gr
 					Add("grpc_error_message", err.Error())
 			}
 
-			_ = currentLogger.Log(fmt.Sprintf("grpc server unary call %s [code:%s, duration:%s]", info.FullMethod, codeStr, duration), o.LevelFunc(code), currentLoggerContext)
+			currentLogger.Log(fmt.Sprintf("grpc server unary call %s [code:%s, duration:%s]", info.FullMethod, codeStr, duration), o.LevelFunc(code), *currentLoggerContext.Slice()...)
 		}()
 
 		return handler(ctx, req)
